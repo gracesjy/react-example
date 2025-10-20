@@ -204,7 +204,7 @@ export default function MergeSplitTable() {
     }
   };
 
-  // master 좌상단 찾기 (현재 테이블 상태 기준)
+  // master 좌상단 찾기
   const findTopLeftOfMergedCell = (r, c) => {
     for (let rr = r; rr >= 0; rr--) {
       for (let cc = c; cc >= 0; cc--) {
@@ -218,7 +218,7 @@ export default function MergeSplitTable() {
     return { r, c };
   };
 
-  // --- previewJSON: 모든 셀에 merge_type 포함, is_master true/false 표기 ---
+  // --- previewJSON ---
   const previewJSON = () => {
     const jsonData = [];
     for (let r = 0; r < table.length; r++) {
@@ -226,19 +226,17 @@ export default function MergeSplitTable() {
         const topLeft = findTopLeftOfMergedCell(r, c);
         const master = table[topLeft.r][topLeft.c];
 
-        // master가 없는 (정상적이지 않은) 경우 안전 처리
         if (!master) {
           jsonData.push({
             row: r + 1,
             col: c + 1,
             merge_type: "",
-            is_master: false,
+            is_master: "False",
             content: ""
           });
           continue;
         }
 
-        // master 기준 merge_type 결정
         let masterMergeType = "";
         if (master.colspan > 1 && master.rowspan === 1) masterMergeType = "H";
         else if (master.rowspan > 1 && master.colspan === 1) masterMergeType = "V";
@@ -250,7 +248,7 @@ export default function MergeSplitTable() {
           row: r + 1,
           col: c + 1,
           merge_type: masterMergeType,
-          is_master: isMasterHere,
+          is_master: isMasterHere ? "True" : "False",
           content: isMasterHere ? master.content : ""
         });
       }
@@ -262,29 +260,23 @@ export default function MergeSplitTable() {
     setMessage("JSON 미리보기가 완료되었습니다.");
   };
 
-  // --- loadFromJSON: merge_type (H/V/HV)와 is_master 를 이용해 정확히 복원 ---
+  // --- loadFromJSON ---
   const loadFromJSON = () => {
     try {
       const jsonStr = prompt("JSON 데이터를 붙여넣으세요:");
       if (!jsonStr) return;
       const data = JSON.parse(jsonStr);
 
-      // map으로 빠른 조회: key = "r,c"
       const dataMap = new Map();
       data.forEach((it) => dataMap.set(`${it.row - 1},${it.col - 1}`, it));
 
-      // 새 테이블 초기화 (복사)
       const newTable = makeInitial().map((row) => row.map((cell) => ({ ...cell })));
 
-      // 처리 전략:
-      // 1) 모든 is_master === true 항목을 찾아서, 그 위치에서 merge_type에 따라
-      //    오른쪽/아래로 연속된 참여 셀을 세어 colspan/rowspan을 결정
-      // 2) 그 영역의 하위 셀들은 null로 설정
-      // 3) 만약 is_master가 false로만 표시되고 master가 없으면 (비정상) 개별 셀로 채움
-
-      // 먼저 is_master true들 처리
       data.forEach((item) => {
-        if (!item.is_master) return;
+        // 문자열 "True" / "False" 혹은 boolean true / false 모두 지원
+        const isMaster = item.is_master === "True" || item.is_master === true;
+
+        if (!isMaster) return;
         const r = item.row - 1;
         const c = item.col - 1;
         if (r < 0 || c < 0 || r >= initialRows || c >= initialCols) return;
@@ -293,14 +285,12 @@ export default function MergeSplitTable() {
         cell.content = item.content ?? "";
         cell.align = item.align ?? "left";
 
-        // compute colspan by scanning right while the dataMap at (r,cc) has merge_type containing 'H'
         let colspan = 1;
         if (item.merge_type && (item.merge_type.includes("H"))) {
           let cc = c + 1;
           while (cc < initialCols) {
             const neighbor = dataMap.get(`${r},${cc}`);
             if (!neighbor) break;
-            // neighbor is part of same horizontal merge if its merge_type contains 'H'
             if (neighbor.merge_type && neighbor.merge_type.includes("H")) {
               colspan++;
               cc++;
@@ -308,7 +298,6 @@ export default function MergeSplitTable() {
           }
         }
 
-        // compute rowspan by scanning down while the dataMap at (rr,c) has merge_type containing 'V'
         let rowspan = 1;
         if (item.merge_type && (item.merge_type.includes("V"))) {
           let rr = r + 1;
@@ -322,11 +311,9 @@ export default function MergeSplitTable() {
           }
         }
 
-        // special: HV -> both directions (already covered by above)
         cell.colspan = colspan;
         cell.rowspan = rowspan;
 
-        // null 처리 (하위 셀들)
         for (let rr = r; rr < r + rowspan; rr++) {
           for (let cc = c; cc < c + colspan; cc++) {
             if (rr === r && cc === c) continue;
@@ -335,18 +322,13 @@ export default function MergeSplitTable() {
         }
       });
 
-      // 2차 pass: 만약 어떤 위치에 master가 명시되지 않았지만 dataMap에 merge_type이 있고 is_master=false,
-      // 즉 master가 누락된 비정상 케이스가 있다면 해당 위치를 단일 셀로 채워둔다.
       data.forEach((item) => {
         const r = item.row - 1;
         const c = item.col - 1;
         if (r < 0 || c < 0 || r >= initialRows || c >= initialCols) return;
         const current = newTable[r][c];
-        // current이 null이면 이미 하위 셀로 처리된 것 (정상)
         if (current === null) return;
-        // 정상적으로 master로 처리되지 않았다면(=기본값으로 남아 있음), 덮어쓰기
-        if (!item.is_master) {
-          // 단일 셀(혹은 안전하게 기본 채움)
+        if (!(item.is_master === "True" || item.is_master === true)) {
           newTable[r][c].content = item.content ?? newTable[r][c].content;
         }
       });
@@ -416,4 +398,3 @@ export default function MergeSplitTable() {
     </div>
   );
 }
-
