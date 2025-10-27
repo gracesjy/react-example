@@ -11,7 +11,6 @@ Ubuntu
    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
    source ~/.bashrc
    nvm install --lts
-
 ```
 Get Source
 ```
@@ -24,5 +23,4 @@ Get Source
 Run
 ```
    npm run dev
-
 ```
