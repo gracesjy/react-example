@@ -300,40 +300,32 @@ export default function MergeSplitTable() {
         cell.content = item.content ?? "";
         cell.align = item.align ?? "left";
 
-	let colspan = 1;
-	if (item.merge_type && item.merge_type.includes("H")) {
-	  let cc = c + 1;
-	  while (cc < initialCols) {
-	    const neighbor = dataMap.get(`${r},${cc}`);
-	    if (!neighbor) break;
-	    if (
-	      neighbor.merge_type &&
-	      neighbor.merge_type.includes("H") &&
-	      !(neighbor.is_master === "True" || neighbor.is_master === true)
-	    ) {
-	      colspan++;
-	      cc++;
-	    } else break;
-	  }
-	}
-
+        let colspan = 1;
+        if (item.merge_type && (item.merge_type.includes("H"))) {
+          let cc = c + 1;
+          while (cc < initialCols) {
+            const neighbor = dataMap.get(`${r},${cc}`);
+            if (!neighbor) break;
+            if (neighbor.merge_type && neighbor.merge_type.includes("H")) {
+              colspan++;
+              cc++;
+            } else break;
+          }
+        }
 
         let rowspan = 1;
-	if (item.merge_type && item.merge_type.includes("V")) {
-	  let rr = r + 1;
-	  while (rr < initialRows) {
-	    const neighbor = dataMap.get(`${rr},${c}`);
-	    if (!neighbor) break;
-	    if (
-	      neighbor.merge_type &&
-	      neighbor.merge_type.includes("V") &&
-	      !(neighbor.is_master === "True" || neighbor.is_master === true)
-	    ) {
-	      rowspan++;
-	      rr++;
-	    } else break;
-	  }
-	}
+        if (item.merge_type && (item.merge_type.includes("V"))) {
+          let rr = r + 1;
+          while (rr < initialRows) {
+            const neighbor = dataMap.get(`${rr},${c}`);
+            if (!neighbor) break;
+            if (neighbor.merge_type && neighbor.merge_type.includes("V")) {
+              rowspan++;
+              rr++;
+            } else break;
+          }
+        }
+
         cell.colspan = colspan;
         cell.rowspan = rowspan;
 
