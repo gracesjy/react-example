@@ -19,6 +19,7 @@ Get Source
    git clone https://github.com/gracesjy/react-example.git
    cd ~/GitHub/react-example
    npm install --save-dev vite
+   npm install react-json-view --legacy-peer-deps
 ```
 Run
 ```
