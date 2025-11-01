@@ -1,5 +1,8 @@
 import React, { useState, useRef } from "react";
 import ReactJson from "react-json-view";
+import Menu from "./Menu.jsx";
+
+
 
 export default function MergeSplitTable() {
   const [numRows, setNumRows] = useState(6);
@@ -34,7 +37,7 @@ export default function MergeSplitTable() {
           colspan: 1,
           alignH: "left",
           alignV: "middle",
-	  metaMergeType: "",
+          metaMergeType: "",
         });
       }
       mat.push(row);
@@ -54,68 +57,66 @@ export default function MergeSplitTable() {
     Array.from(selected).map((s) => s.split(",").map(Number));
 
   const getRectCoords = (a, b) => {
-  const rmin = Math.min(a.r, b.r);
-  const rmax = Math.max(a.r, b.r);
-  const cmin = Math.min(a.c, b.c);
-  const cmax = Math.max(a.c, b.c);
-  const coords = new Set();
+    const rmin = Math.min(a.r, b.r);
+    const rmax = Math.max(a.r, b.r);
+    const cmin = Math.min(a.c, b.c);
+    const cmax = Math.max(a.c, b.c);
+    const coords = new Set();
 
-  // 병합 셀 포함
-  for (let r = rmin; r <= rmax; r++) {
-    for (let c = cmin; c <= cmax; c++) {
-      const cell = table[r][c];
-      if (cell) {
-        const rs = cell.rowspan || 1;
-        const cs = cell.colspan || 1;
-        for (let dr = 0; dr < rs; dr++) {
-          for (let dc = 0; dc < cs; dc++) {
-            coords.add(key(r + dr, c + dc));
+    // 병합 셀 포함
+    for (let r = rmin; r <= rmax; r++) {
+      for (let c = cmin; c <= cmax; c++) {
+        const cell = table[r][c];
+        if (cell) {
+          const rs = cell.rowspan || 1;
+          const cs = cell.colspan || 1;
+          for (let dr = 0; dr < rs; dr++) {
+            for (let dc = 0; dc < cs; dc++) {
+              coords.add(key(r + dr, c + dc));
+            }
           }
-        }
-      } else {
-        // 숨겨진 셀 → 마스터 셀 찾아서 병합 범위 포함
-        for (let mr = 0; mr < table.length; mr++) {
-          for (let mc = 0; mc < table[0].length; mc++) {
-            const master = table[mr][mc];
-            if (
-              master &&
-              mr <= r &&
-              r < mr + master.rowspan &&
-              mc <= c &&
-              c < mc + master.colspan
-            ) {
-              for (let dr = 0; dr < master.rowspan; dr++) {
-                for (let dc = 0; dc < master.colspan; dc++) {
-                  coords.add(key(mr + dr, mc + dc));
+        } else {
+          // 숨겨진 셀 → 마스터 셀 찾아서 병합 범위 포함
+          for (let mr = 0; mr < table.length; mr++) {
+            for (let mc = 0; mc < table[0].length; mc++) {
+              const master = table[mr][mc];
+              if (
+                master &&
+                mr <= r &&
+                r < mr + master.rowspan &&
+                mc <= c &&
+                c < mc + master.colspan
+              ) {
+                for (let dr = 0; dr < master.rowspan; dr++) {
+                  for (let dc = 0; dc < master.colspan; dc++) {
+                    coords.add(key(mr + dr, mc + dc));
+                  }
                 }
+                break;
               }
-              break;
             }
           }
         }
       }
     }
-  }
 
-  // ✅ 마지막 보정: 사각형 범위 안의 모든 셀을 누락 없이 포
-  const all = Array.from(coords).map((s) => s.split(",").map(Number));
-  const rs = all.map(([r]) => r);
-  const cs = all.map(([, c]) => c);
-  const rrmin = Math.min(...rs);
-  const rrmax = Math.max(...rs);
-  const ccmin = Math.min(...cs);
-  const ccmax = Math.max(...cs);
+    // ✅ 마지막 보정: 사각형 범위 안의 모든 셀을 누락 없이 포
+    const all = Array.from(coords).map((s) => s.split(",").map(Number));
+    const rs = all.map(([r]) => r);
+    const cs = all.map(([, c]) => c);
+    const rrmin = Math.min(...rs);
+    const rrmax = Math.max(...rs);
+    const ccmin = Math.min(...cs);
+    const ccmax = Math.max(...cs);
 
-  for (let r = rrmin; r <= rrmax; r++) {
-    for (let c = ccmin; c <= ccmax; c++) {
-      coords.add(key(r, c));
+    for (let r = rrmin; r <= rrmax; r++) {
+      for (let c = ccmin; c <= ccmax; c++) {
+        coords.add(key(r, c));
+      }
     }
-  }
 
-  return Array.from(coords).map((s) => s.split(",").map(Number));
-
-
-};
+    return Array.from(coords).map((s) => s.split(",").map(Number));
+  };
 
 
   const onCellMouseDown = (r, c, e) => {
@@ -126,52 +127,52 @@ export default function MergeSplitTable() {
     setSelected(new Set([key(r, c)]));
   };
 
-const onCellMouseEnter = (r, c) => {
-  if (!dragging.current || !startCell.current) return;
+  const onCellMouseEnter = (r, c) => {
+    if (!dragging.current || !startCell.current) return;
 
-  const coords = getRectCoords(startCell.current, { r, c });
+    const coords = getRectCoords(startCell.current, { r, c });
 
-  console.log(coords)
+    console.log(coords)
 
-  const expanded = new Set();
+    const expanded = new Set();
 
-  coords.forEach(([rr, cc]) => {
-    const cell = table[rr][cc];
-    if (cell) {
-      // ✅ 병합 셀이라면 전체 범위 확장
-      const rs = cell.rowspan || 1;
-      const cs = cell.colspan || 1;
-      for (let dr = 0; dr < rs; dr++) {
-        for (let dc = 0; dc < cs; dc++) {
-          expanded.add(key(rr + dr, cc + dc));
+    coords.forEach(([rr, cc]) => {
+      const cell = table[rr][cc];
+      if (cell) {
+        // ✅ 병합 셀이라면 전체 범위 확장
+        const rs = cell.rowspan || 1;
+        const cs = cell.colspan || 1;
+        for (let dr = 0; dr < rs; dr++) {
+          for (let dc = 0; dc < cs; dc++) {
+            expanded.add(key(rr + dr, cc + dc));
+          }
         }
-      }
-    } else {
-      // ✅ 숨겨진 셀일 경우 마스터 셀 찾아서 그 범위도 포함
-      for (let mr = 0; mr < table.length; mr++) {
-        for (let mc = 0; mc < table[0].length; mc++) {
-          const master = table[mr][mc];
-          if (
-            master &&
-            mr <= rr &&
-            rr < mr + master.rowspan &&
-            mc <= cc &&
-            cc < mc + master.colspan
-          ) {
-            for (let dr = 0; dr < master.rowspan; dr++) {
-              for (let dc = 0; dc < master.colspan; dc++) {
-                expanded.add(key(mr + dr, mc + dc));
+      } else {
+        // ✅ 숨겨진 셀일 경우 마스터 셀 찾아서 그 범위도 포함
+        for (let mr = 0; mr < table.length; mr++) {
+          for (let mc = 0; mc < table[0].length; mc++) {
+            const master = table[mr][mc];
+            if (
+              master &&
+              mr <= rr &&
+              rr < mr + master.rowspan &&
+              mc <= cc &&
+              cc < mc + master.colspan
+            ) {
+              for (let dr = 0; dr < master.rowspan; dr++) {
+                for (let dc = 0; dc < master.colspan; dc++) {
+                  expanded.add(key(mr + dr, mc + dc));
+                }
               }
+              break;
             }
-            break;
           }
         }
       }
-    }
-  });
+    });
 
-  setSelected(expanded);
-};
+    setSelected(expanded);
+  };
 
   const onMouseUp = () => {
     document.body.style.userSelect = "";
@@ -194,25 +195,25 @@ const onCellMouseEnter = (r, c) => {
   };
 
   const setMetaMergeTypeHV = () => {
-  const coords = getSelectedCoords();
-  if (coords.length === 0) {
-    setMessage("HV로 설정할 셀을 선택하세요.");
-    return;
-  }
+    const coords = getSelectedCoords();
+    if (coords.length === 0) {
+      setMessage("HV로 설정할 셀을 선택하세요.");
+      return;
+    }
 
-  const newTable = table.map((row) =>
-    row.map((cell) => (cell ? { ...cell } : null)),
-  );
+    const newTable = table.map((row) =>
+      row.map((cell) => (cell ? { ...cell } : null)),
+    );
 
-  coords.forEach(([r, c]) => {
-    const cell = newTable[r][c];
-    if (cell) cell.metaMergeType = "HV";
-  });
+    coords.forEach(([r, c]) => {
+      const cell = newTable[r][c];
+      if (cell) cell.metaMergeType = "HV";
+    });
 
-  setTable(newTable);
-  clearSelection();
-  setMessage("선택된 셀에 metaMergeType: 'HV'가 설정되었습니다.");
-};
+    setTable(newTable);
+    clearSelection();
+    setMessage("선택된 셀에 metaMergeType: 'HV'가 설정되었습니다.");
+  };
 
   // 병합
   const mergeSelected = () => {
@@ -258,14 +259,14 @@ const onCellMouseEnter = (r, c) => {
     master.alignV = "middle";
     master.isBold = true;
     if (master.colspan > 1 && master.rowspan === 1) master.metaMergeType = "H";
-  else if (master.rowspan > 1 && master.colspan === 1) master.metaMergeType = "V";
-  else {
-    // 겹치는 경우(둘 다 >1)라면 판단 로직 필요 — 여기서는 빈값으로 둠
-    master.metaMergeType = ""; 
-    master.alignH = "left";
-    master.alignV = "middle";
-    master.isBold = false;
-  }
+    else if (master.rowspan > 1 && master.colspan === 1) master.metaMergeType = "V";
+    else {
+      // 겹치는 경우(둘 다 >1)라면 판단 로직 필요 — 여기서는 빈값으로 둠
+      master.metaMergeType = "";
+      master.alignH = "left";
+      master.alignV = "middle";
+      master.isBold = false;
+    }
 
     for (let r = rmin; r <= rmax; r++)
       for (let c = cmin; c <= cmax; c++)
@@ -299,7 +300,7 @@ const onCellMouseEnter = (r, c) => {
           colspan: 1,
           alignH: "left",
           alignV: "middle",
-	  metaMergeType: "",
+          metaMergeType: "",
         };
     setTable(newTable);
     clearSelection();
@@ -389,7 +390,7 @@ const onCellMouseEnter = (r, c) => {
             colspan: maxC,
             alignH: master.alignH,
             alignV: master.alignV,
-	    metaMergeType: master.metaMergeType ?? "",
+            metaMergeType: master.metaMergeType ?? "",
           };
           for (let rr = relMr; rr < relMr + maxR; rr++)
             for (let cc = relMc; cc < relMc + maxC; cc++)
@@ -539,7 +540,7 @@ const onCellMouseEnter = (r, c) => {
             master.alignV = cell.alignV ?? "middle";
             master.colspan = span;
             master.metaMergeType = cell.merge_type;
-	    master.isBold = true
+            master.isBold = true
             // 숨김 처리
             for (let cc = 1; cc < span; cc++) newTable[r - 1][c + cc] = null;
           }
@@ -567,8 +568,8 @@ const onCellMouseEnter = (r, c) => {
             master.alignH = cell.alignH ?? "center";
             master.alignV = cell.alignV ?? "middle";
             master.rowspan = span;
-	    master.metaMergeType = "V";
-	    master.isBold = true;
+            master.metaMergeType = "V";
+            master.isBold = true;
             // 숨김 처리
             for (let rr = 1; rr < span; rr++) newTable[r + rr][c - 1] = null;
           }
@@ -603,6 +604,8 @@ const onCellMouseEnter = (r, c) => {
       onMouseUp={onMouseUp}
       onMouseLeave={onMouseUp}
     >
+      <Menu />
+
       <h2 className="text-2xl font-semibold mb-3">
         Merge / Split / Crop Table + 정렬 + JSON
       </h2>
@@ -644,12 +647,12 @@ const onCellMouseEnter = (r, c) => {
         >
           Merge
         </button>
-	<button
-  onClick={setMetaMergeTypeHV}
-  className="px-3 py-1 rounded bg-teal-600 text-white"
->
-  Set HV
-</button> 
+        <button
+          onClick={setMetaMergeTypeHV}
+          className="px-3 py-1 rounded bg-teal-600 text-white"
+        >
+          Set HV
+        </button>
 
         <button
           onClick={splitSelected}
@@ -737,20 +740,20 @@ const onCellMouseEnter = (r, c) => {
                       style={{
                         textAlign: cell.alignH,
                         verticalAlign: cell.alignV,
-		        fontWeight: cell.isBold ? "bold" : "normal",
+                        fontWeight: cell.isBold ? "bold" : "normal",
                         backgroundColor: (() => {
-      // 기본 병합 색
-      if (cell.metaMergeType === "H") return "lightgreen";
-      if (cell.metaMergeType === "V") return "lightyellow";
-      if (cell.metaMergeType === "HV") return "transparent";
-      return "transparent";
-    })(),
-    // ✅ 선택 중인 셀에 약간의 파란 배경 겹치기
-    boxShadow: sel ? "inset 0 0 0 2px rgba(79, 70, 229, 0.8)" : "none",
-    backgroundImage: sel
-      ? "linear-gradient(rgba(173,216,230,0.4), rgba(173,216,230,0.4))"
-      : "none",
-    backgroundBlendMode: "multiply",
+                          // 기본 병합 색
+                          if (cell.metaMergeType === "H") return "lightgreen";
+                          if (cell.metaMergeType === "V") return "lightyellow";
+                          if (cell.metaMergeType === "HV") return "transparent";
+                          return "transparent";
+                        })(),
+                        // ✅ 선택 중인 셀에 약간의 파란 배경 겹치기
+                        boxShadow: sel ? "inset 0 0 0 2px rgba(79, 70, 229, 0.8)" : "none",
+                        backgroundImage: sel
+                          ? "linear-gradient(rgba(173,216,230,0.4), rgba(173,216,230,0.4))"
+                          : "none",
+                        backgroundBlendMode: "multiply",
                       }}
                       className={`border p-2 min-w-[80px] ${sel ? "ring-2 ring-indigo-400 bg-indigo-50" : ""}`}
                       onMouseDown={(e) => onCellMouseDown(r, c, e)}
@@ -771,11 +774,11 @@ const onCellMouseEnter = (r, c) => {
                       >
                         {cell.content}
                       </div>
-		      {/*
+                      {/*
                       <div className="text-xs text-gray-400 mt-1">
                         ({cell.alignH}, {cell.alignV})
                       </div>
-		      */}
+		                  */}
                     </td>
                   );
                 })}
@@ -784,7 +787,6 @@ const onCellMouseEnter = (r, c) => {
           </tbody>
         </table>
       </div>
-      // 여기에 넣어라.
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-4 rounded max-w-3xl w-full shadow-lg">
