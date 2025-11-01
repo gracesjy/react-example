@@ -34,6 +34,7 @@ export default function MergeSplitTable() {
           colspan: 1,
           alignH: "left",
           alignV: "middle",
+	  metaMergeType: "",
         });
       }
       mat.push(row);
@@ -192,6 +193,27 @@ const onCellMouseEnter = (r, c) => {
     return count === coords.length;
   };
 
+  const setMetaMergeTypeHV = () => {
+  const coords = getSelectedCoords();
+  if (coords.length === 0) {
+    setMessage("HV로 설정할 셀을 선택하세요.");
+    return;
+  }
+
+  const newTable = table.map((row) =>
+    row.map((cell) => (cell ? { ...cell } : null)),
+  );
+
+  coords.forEach(([r, c]) => {
+    const cell = newTable[r][c];
+    if (cell) cell.metaMergeType = "HV";
+  });
+
+  setTable(newTable);
+  clearSelection();
+  setMessage("선택된 셀에 metaMergeType: 'HV'가 설정되었습니다.");
+};
+
   // 병합
   const mergeSelected = () => {
     const coords = getSelectedCoords();
@@ -208,6 +230,8 @@ const onCellMouseEnter = (r, c) => {
       master.rowspan = 1; // 병합은 없지만 merge_type 표시를 위해 유지
       master.colspan = 1;
       master.metaMergeType = "V";
+      master.alignH = "center";
+      master.alignV = "middle";
       console.log("master metaMergeType V set !");
 
       setTable(newTable);
@@ -230,6 +254,19 @@ const onCellMouseEnter = (r, c) => {
     const master = newTable[rmin][cmin];
     master.rowspan = rmax - rmin + 1;
     master.colspan = cmax - cmin + 1;
+    master.alignH = "center";
+    master.alignV = "middle";
+    master.isBold = true;
+    if (master.colspan > 1 && master.rowspan === 1) master.metaMergeType = "H";
+  else if (master.rowspan > 1 && master.colspan === 1) master.metaMergeType = "V";
+  else {
+    // 겹치는 경우(둘 다 >1)라면 판단 로직 필요 — 여기서는 빈값으로 둠
+    master.metaMergeType = ""; 
+    master.alignH = "left";
+    master.alignV = "middle";
+    master.isBold = false;
+  }
+
     for (let r = rmin; r <= rmax; r++)
       for (let c = cmin; c <= cmax; c++)
         if (!(r === rmin && c === cmin)) newTable[r][c] = null;
@@ -247,7 +284,7 @@ const onCellMouseEnter = (r, c) => {
     }
     const [r, c] = coords[0];
     const cell = table[r][c];
-    if (!cell || (cell.rowspan === 1 && cell.colspan === 1)) {
+    if (!cell || (cell.rowspan === 1 && cell.colspan === 1 && cell.metaMergeType == "")) {
       setMessage("병합된 셀이 아닙니다.");
       return;
     }
@@ -262,6 +299,7 @@ const onCellMouseEnter = (r, c) => {
           colspan: 1,
           alignH: "left",
           alignV: "middle",
+	  metaMergeType: "",
         };
     setTable(newTable);
     clearSelection();
@@ -351,6 +389,7 @@ const onCellMouseEnter = (r, c) => {
             colspan: maxC,
             alignH: master.alignH,
             alignV: master.alignV,
+	    metaMergeType: master.metaMergeType ?? "",
           };
           for (let rr = relMr; rr < relMr + maxR; rr++)
             for (let cc = relMc; cc < relMc + maxC; cc++)
@@ -484,21 +523,23 @@ const onCellMouseEnter = (r, c) => {
         for (let c = 0; c < maxC; c++) {
           const cell = rowCells.find((x) => x.col === c + 1);
           if (!cell) continue;
-          if (cell.merge_type === "H" && cell.is_master === "True") {
+          if ((cell.merge_type === "H" || cell.merge_type === "HV") && cell.is_master === "True") {
             // 같은 행에서 다음 H 셀들을 탐색하되, 중간에 새로운 master가 있으면 중단
             let span = 1;
             for (let cc = c + 1; cc < maxC; cc++) {
               const next = rowCells.find((x) => x.col === cc + 1);
               if (!next) break;
-              if (next.merge_type === "H" && next.is_master === "False") span++;
+              if ((next.merge_type === "H" || next.merge_type === "HV") && next.is_master === "False") span++;
               else break;
             }
 
             const master = newTable[r - 1][c];
             master.content = cell.content ?? "";
-            master.alignH = cell.alignH ?? "left";
+            master.alignH = cell.alignH ?? "center";
             master.alignV = cell.alignV ?? "middle";
             master.colspan = span;
+            master.metaMergeType = cell.merge_type;
+	    master.isBold = true
             // 숨김 처리
             for (let cc = 1; cc < span; cc++) newTable[r - 1][c + cc] = null;
           }
@@ -523,9 +564,11 @@ const onCellMouseEnter = (r, c) => {
 
             const master = newTable[r][c - 1];
             master.content = cell.content ?? "";
-            master.alignH = cell.alignH ?? "left";
+            master.alignH = cell.alignH ?? "center";
             master.alignV = cell.alignV ?? "middle";
             master.rowspan = span;
+	    master.metaMergeType = "V";
+	    master.isBold = true;
             // 숨김 처리
             for (let rr = 1; rr < span; rr++) newTable[r + rr][c - 1] = null;
           }
@@ -601,6 +644,13 @@ const onCellMouseEnter = (r, c) => {
         >
           Merge
         </button>
+	<button
+  onClick={setMetaMergeTypeHV}
+  className="px-3 py-1 rounded bg-teal-600 text-white"
+>
+  Set HV
+</button> 
+
         <button
           onClick={splitSelected}
           className="px-3 py-1 rounded bg-yellow-500 text-white"
@@ -687,6 +737,20 @@ const onCellMouseEnter = (r, c) => {
                       style={{
                         textAlign: cell.alignH,
                         verticalAlign: cell.alignV,
+		        fontWeight: cell.isBold ? "bold" : "normal",
+                        backgroundColor: (() => {
+      // 기본 병합 색
+      if (cell.metaMergeType === "H") return "lightgreen";
+      if (cell.metaMergeType === "V") return "lightyellow";
+      if (cell.metaMergeType === "HV") return "transparent";
+      return "transparent";
+    })(),
+    // ✅ 선택 중인 셀에 약간의 파란 배경 겹치기
+    boxShadow: sel ? "inset 0 0 0 2px rgba(79, 70, 229, 0.8)" : "none",
+    backgroundImage: sel
+      ? "linear-gradient(rgba(173,216,230,0.4), rgba(173,216,230,0.4))"
+      : "none",
+    backgroundBlendMode: "multiply",
                       }}
                       className={`border p-2 min-w-[80px] ${sel ? "ring-2 ring-indigo-400 bg-indigo-50" : ""}`}
                       onMouseDown={(e) => onCellMouseDown(r, c, e)}
@@ -707,9 +771,11 @@ const onCellMouseEnter = (r, c) => {
                       >
                         {cell.content}
                       </div>
+		      {/*
                       <div className="text-xs text-gray-400 mt-1">
                         ({cell.alignH}, {cell.alignV})
                       </div>
+		      */}
                     </td>
                   );
                 })}
