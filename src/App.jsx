@@ -724,9 +724,9 @@ export default function MergeSplitTable() {
           Load JSON
         </button>
         <div>
-      
-      <Preview />
-    </div>
+
+          <Preview />
+        </div>
 
       </div>
       <div className="overflow-auto border rounded">
