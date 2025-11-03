@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 import ReactJson from "react-json-view";
 import Menu from "./Menu.jsx";
-
+import Preview from './components/Preview';
 
 
 export default function MergeSplitTable() {
@@ -723,6 +723,11 @@ export default function MergeSplitTable() {
         >
           Load JSON
         </button>
+        <div>
+      
+      <Preview />
+    </div>
+
       </div>
       <div className="overflow-auto border rounded">
         <table className="w-full border-collapse select-none">
