@@ -607,7 +607,7 @@ export default function MergeSplitTable() {
       <Menu />
 
       <h2 className="text-2xl font-semibold mb-3">
-        Merge / Split / Crop Table + 정렬 + JSON
+        Merge / Split / Crop Table + Align + JSON
       </h2>
       <p className="mb-3 text-sm text-gray-600">{message}</p>
       <div className="flex flex-wrap items-center gap-2 mb-3">
